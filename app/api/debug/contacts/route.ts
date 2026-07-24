@@ -24,25 +24,23 @@ export async function GET() {
   try {
     const client = new GhlClient();
     const data = await client.request<ContactsResponse>(
-      `/contacts/?locationId=${encodeURIComponent(locationId)}&limit=20`,
+      `/contacts/?locationId=${encodeURIComponent(locationId)}&limit=100`,
     );
 
     const contacts = Array.isArray(data.contacts) ? data.contacts : [];
-    const preferred = contacts.find((contact) => {
-      const name = String(
-        contact.contactName ??
-          contact.name ??
-          contact.companyName ??
-          contact.firstName ??
-          "",
-      ).toLowerCase();
 
-      return name.includes("scattered acres") || name.includes("inspired vacations");
-    });
+    const contactSummaries = contacts.map((contact) => ({
+      id: contact.id ?? null,
+      contactName: contact.contactName ?? contact.name ?? null,
+      companyName: contact.companyName ?? null,
+      customFields: Array.isArray(contact.customFields)
+        ? contact.customFields
+        : [],
+    }));
 
     return NextResponse.json({
       contactCount: contacts.length,
-      sampleContact: preferred ?? contacts[0] ?? null,
+      contacts: contactSummaries,
       topLevelResponseKeys: Object.keys(data),
     });
   } catch (error) {
