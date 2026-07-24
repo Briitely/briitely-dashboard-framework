@@ -12,14 +12,18 @@ export class GhlClient {
   private readonly baseUrl: string;
 
   constructor(options: GhlClientOptions = {}) {
-    this.accessToken = options.accessToken ?? process.env.GHL_API_KEY ?? "";
+    this.accessToken =
+      options.accessToken ??
+      process.env.GHL_PRIVATE_TOKEN ??
+      process.env.GHL_API_KEY ??
+      "";
     this.apiVersion = options.apiVersion ?? process.env.GHL_API_VERSION ?? "2021-07-28";
     this.baseUrl = options.baseUrl ?? DEFAULT_API_URL;
   }
 
   async request<T>(path: string, init: RequestInit = {}): Promise<T> {
     if (!this.accessToken) {
-      throw new Error("Missing GHL_API_KEY environment variable.");
+      throw new Error("Missing GHL_PRIVATE_TOKEN environment variable.");
     }
 
     const response = await fetch(`${this.baseUrl}${path}`, {
