@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Briitely Dashboard Framework",
-  description: "Reusable reporting and dashboard framework for Briitely clients.",
+  title: "Revenue Dashboard | Briitely",
+  description: "Live recurring and one-time revenue reporting.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
