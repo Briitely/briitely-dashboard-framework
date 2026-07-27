@@ -6,13 +6,62 @@ import {
   isInReportingYear,
   type ReportingConfig,
 } from "@/lib/date/reporting";
-import { getDate, getNumber, getText } from "@/lib/ghl/customFields";
+import {
+  getDate,
+  getFieldValue,
+  getNumber,
+  getText,
+} from "@/lib/ghl/customFields";
 import type { GhlContact, GhlOpportunity } from "@/lib/ghl/models";
 import type {
   RevenueClient,
   RevenueDashboard,
   RevenueSource,
 } from "@/types/dashboard";
+
+export interface RevenueInputDiagnostics {
+  contactsWithCustomFields: number;
+  mrrFieldMatches: number;
+  nonZeroMrrMatches: number;
+  mrrValueTypes: string[];
+  contractStartFieldMatches: number;
+  opportunitiesWithCustomFields: number;
+  oneTimeFeeFieldMatches: number;
+  wonDateFieldMatches: number;
+}
+
+export function getRevenueInputDiagnostics(
+  contacts: GhlContact[],
+  opportunities: GhlOpportunity[],
+): RevenueInputDiagnostics {
+  const mrrValues = contacts
+    .map((contact) => getFieldValue(contact, revenueFields.mrr))
+    .filter((value) => value !== null);
+
+  return {
+    contactsWithCustomFields: contacts.filter(
+      (contact) => (contact.customFields?.length ?? 0) > 0,
+    ).length,
+    mrrFieldMatches: mrrValues.length,
+    nonZeroMrrMatches: contacts.filter(
+      (contact) => getNumber(contact, revenueFields.mrr) > 0,
+    ).length,
+    mrrValueTypes: [...new Set(mrrValues.map((value) => typeof value))],
+    contractStartFieldMatches: contacts.filter(
+      (contact) => getDate(contact, revenueFields.contractStart) !== null,
+    ).length,
+    opportunitiesWithCustomFields: opportunities.filter(
+      (opportunity) => (opportunity.customFields?.length ?? 0) > 0,
+    ).length,
+    oneTimeFeeFieldMatches: opportunities.filter(
+      (opportunity) =>
+        getFieldValue(opportunity, revenueFields.oneTimeFee) !== null,
+    ).length,
+    wonDateFieldMatches: opportunities.filter(
+      (opportunity) => getDate(opportunity, revenueFields.wonDate) !== null,
+    ).length,
+  };
+}
 
 function minDate(...dates: Date[]): Date {
   return new Date(Math.min(...dates.map((date) => date.getTime())));
