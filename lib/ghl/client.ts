@@ -21,12 +21,13 @@ export class GhlClient {
     this.baseUrl = options.baseUrl ?? DEFAULT_API_URL;
   }
 
-  async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  async request<T>(pathOrUrl: string, init: RequestInit = {}): Promise<T> {
     if (!this.accessToken) {
       throw new Error("Missing GHL_PRIVATE_TOKEN environment variable.");
     }
 
-    const response = await fetch(`${this.baseUrl}${path}`, {
+    const url = pathOrUrl.startsWith("http") ? pathOrUrl : `${this.baseUrl}${pathOrUrl}`;
+    const response = await fetch(url, {
       ...init,
       headers: {
         Accept: "application/json",
