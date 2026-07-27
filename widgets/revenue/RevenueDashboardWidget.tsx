@@ -146,9 +146,8 @@ export function RevenueDashboardWidget({
               <thead>
                 <tr>
                   <th>Source</th>
-                  <th>Clients</th>
-                  <th>YTD MRR</th>
-                  <th>Total</th>
+                  <th>Total clients</th>
+                  <th>Total revenue</th>
                 </tr>
               </thead>
               <tbody>
@@ -156,7 +155,6 @@ export function RevenueDashboardWidget({
                   <tr key={row.source}>
                     <td>{row.source}</td>
                     <td>{row.clients}</td>
-                    <td>{money(row.ytdMrr)}</td>
                     <td className="totalCell">{money(row.total)}</td>
                   </tr>
                 ))}
@@ -179,6 +177,7 @@ export function RevenueDashboardWidget({
                 <tr>
                   <th>Client</th>
                   <th>Source</th>
+                  <th>One-time fee</th>
                   <th>MRR</th>
                   <th>YTD total</th>
                 </tr>
@@ -191,6 +190,7 @@ export function RevenueDashboardWidget({
                       <span className="clientPackage">{row.package}</span>
                     </td>
                     <td>{row.referralSource}</td>
+                    <td>{money(row.oneTimeFees)}</td>
                     <td>{money(row.mrr)}</td>
                     <td className="totalCell">{money(row.total)}</td>
                   </tr>
