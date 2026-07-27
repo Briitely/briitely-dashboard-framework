@@ -28,6 +28,8 @@ export interface RevenueInputDiagnostics {
   opportunitiesWithCustomFields: number;
   oneTimeFeeFieldMatches: number;
   wonDateFieldMatches: number;
+  contactFieldIds: string[];
+  opportunityFieldIds: string[];
 }
 
 export function getRevenueInputDiagnostics(
@@ -60,6 +62,24 @@ export function getRevenueInputDiagnostics(
     wonDateFieldMatches: opportunities.filter(
       (opportunity) => getDate(opportunity, revenueFields.wonDate) !== null,
     ).length,
+    contactFieldIds: [
+      ...new Set(
+        contacts.flatMap((contact) =>
+          (contact.customFields ?? []).flatMap((field) =>
+            field.id ? [field.id] : [],
+          ),
+        ),
+      ),
+    ].sort(),
+    opportunityFieldIds: [
+      ...new Set(
+        opportunities.flatMap((opportunity) =>
+          (opportunity.customFields ?? []).flatMap((field) =>
+            field.id ? [field.id] : [],
+          ),
+        ),
+      ),
+    ].sort(),
   };
 }
 
