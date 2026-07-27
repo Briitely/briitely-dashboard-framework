@@ -107,8 +107,9 @@ export function RevenueDashboardWidget({
     <main className="dashboardShell">
       <header className="dashboardHeader">
         <div>
-          <div className="eyebrow">{companyName}</div>
-          <h1>Revenue dashboard</h1>
+          <div className="eyebrow">
+            {companyName} custom revenue dashboard
+          </div>
           <p>
             Reporting year {dashboard.year} · Updated{" "}
             {new Intl.DateTimeFormat(locale, {
