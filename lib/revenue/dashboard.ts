@@ -1,10 +1,7 @@
 import { clientConfig } from "@/config/client";
 import { fetchAllContacts } from "@/lib/ghl/contacts";
 import { fetchAllOpportunities } from "@/lib/ghl/opportunities";
-import {
-  calculateRevenueDashboard,
-  getRevenueInputDiagnostics,
-} from "@/lib/revenue/calculator";
+import { calculateRevenueDashboard } from "@/lib/revenue/calculator";
 import type { RevenueDashboard } from "@/types/dashboard";
 
 export async function getRevenueDashboard(): Promise<RevenueDashboard> {
@@ -13,19 +10,9 @@ export async function getRevenueDashboard(): Promise<RevenueDashboard> {
     fetchAllOpportunities(),
   ]);
 
-  const dashboard = calculateRevenueDashboard(
+  return calculateRevenueDashboard(
     contacts,
     opportunities,
     clientConfig.reporting,
   );
-
-  console.info("Revenue dashboard record counts", {
-    contacts: contacts.length,
-    opportunities: opportunities.length,
-    clientRows: dashboard.clientRows.length,
-    sourceRows: dashboard.sourceRows.length,
-    ...getRevenueInputDiagnostics(contacts, opportunities),
-  });
-
-  return dashboard;
 }
