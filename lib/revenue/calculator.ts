@@ -72,47 +72,17 @@ function getOneTimeFeesByContact(
   asOf: Date,
 ): Map<string, number> {
   const fees = new Map<string, number>();
-  let feeFieldMatches = 0;
-  let nonZeroFees = 0;
-  let wonDateMatches = 0;
-  let wonDatesInReportingYear = 0;
-  let parsedFeeTotal = 0;
 
   for (const opportunity of opportunities) {
     const wonDate = getDate(opportunity, revenueFields.wonDate);
     const contactId = getContactId(opportunity);
-    const fee = getNumber(opportunity, revenueFields.oneTimeFee);
-    if (
-      opportunity.customFields?.some(
-        (field) =>
-          field.id === revenueFields.oneTimeFee ||
-          field.key === revenueFields.oneTimeFee,
-      )
-    ) {
-      feeFieldMatches += 1;
-    }
-    if (fee > 0) {
-      nonZeroFees += 1;
-      parsedFeeTotal += fee;
-    }
-    if (wonDate) wonDateMatches += 1;
     if (!wonDate || !contactId || !isInReportingYear(wonDate, reporting, asOf)) {
       continue;
     }
 
-    wonDatesInReportingYear += 1;
+    const fee = getNumber(opportunity, revenueFields.oneTimeFee);
     fees.set(contactId, (fees.get(contactId) ?? 0) + fee);
   }
-
-  console.info("One-time fee calculation diagnostics", {
-    opportunities: opportunities.length,
-    feeFieldMatches,
-    nonZeroFees,
-    parsedFeeTotal,
-    wonDateMatches,
-    wonDatesInReportingYear,
-    includedContacts: fees.size,
-  });
 
   return fees;
 }

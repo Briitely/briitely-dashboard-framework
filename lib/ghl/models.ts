@@ -4,6 +4,9 @@ export type GhlCustomField = {
   value?: unknown;
   fieldValue?: unknown;
   field_value?: unknown;
+  fieldValueNumber?: unknown;
+  fieldValueDate?: unknown;
+  fieldValueString?: unknown;
 };
 
 export type GhlContact = {
@@ -20,5 +23,8 @@ export type GhlOpportunity = {
   id?: string;
   contactId?: string;
   contact?: { id?: string };
+  status?: string;
+  lastStatusChangeAt?: string;
+  createdAt?: string;
   customFields?: GhlCustomField[];
 };
