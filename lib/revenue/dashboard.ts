@@ -10,9 +10,18 @@ export async function getRevenueDashboard(): Promise<RevenueDashboard> {
     fetchAllOpportunities(),
   ]);
 
-  return calculateRevenueDashboard(
+  const dashboard = calculateRevenueDashboard(
     contacts,
     opportunities,
     clientConfig.reporting,
   );
+
+  console.info("Revenue dashboard record counts", {
+    contacts: contacts.length,
+    opportunities: opportunities.length,
+    clientRows: dashboard.clientRows.length,
+    sourceRows: dashboard.sourceRows.length,
+  });
+
+  return dashboard;
 }
