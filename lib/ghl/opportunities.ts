@@ -15,7 +15,8 @@ export async function fetchAllOpportunities(client = new GhlClient()): Promise<G
 
   while (url && !visited.has(url)) {
     visited.add(url);
-    const response = await client.request<OpportunitiesResponse>(url);
+    const response: OpportunitiesResponse =
+      await client.request<OpportunitiesResponse>(url);
     const page = response.opportunities ?? [];
     items.push(...page);
 
