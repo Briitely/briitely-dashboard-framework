@@ -10,12 +10,23 @@ export interface RevenueClient {
   id: string;
   client: string;
   referralSource: string;
+  directReferrer: string;
+  revenueReferrer: string;
   package: string;
   mrr: number;
   ytdMrr: number;
   oneTimeFees: number;
   total: number;
   cancelled: boolean;
+}
+
+export interface RevenueReferrer {
+  referrer: string;
+  clients: number;
+  mrr: number;
+  ytdMrr: number;
+  oneTimeFees: number;
+  total: number;
 }
 
 export interface RevenueSource {
@@ -25,6 +36,7 @@ export interface RevenueSource {
   ytdMrr: number;
   oneTimeFees: number;
   total: number;
+  referrers: RevenueReferrer[];
 }
 
 export interface RevenueDashboard {
