@@ -6,15 +6,12 @@ import {
   isInReportingYear,
   type ReportingConfig,
 } from "@/lib/date/reporting";
-import {
-  getDate,
-  getNumber,
-  getText,
-} from "@/lib/ghl/customFields";
+import { getDate, getNumber, getText } from "@/lib/ghl/customFields";
 import type { GhlContact, GhlOpportunity } from "@/lib/ghl/models";
 import type {
   RevenueClient,
   RevenueDashboard,
+  RevenueReferrer,
   RevenueSource,
 } from "@/types/dashboard";
 
@@ -26,9 +23,7 @@ function monthsBetweenInclusive(start: Date, end: Date): number {
   if (end < start) return 0;
   return (
     (end.getUTCFullYear() - start.getUTCFullYear()) * 12 +
-    end.getUTCMonth() -
-    start.getUTCMonth() +
-    1
+    end.getUTCMonth() - start.getUTCMonth() + 1
   );
 }
 
@@ -41,8 +36,7 @@ export function getMonthsEarned(
   if (!contractStart || contractStart > asOf) return 0;
 
   const reportingStart = getReportingStart(reporting, asOf);
-  const effectiveStart =
-    contractStart > reportingStart ? contractStart : reportingStart;
+  const effectiveStart = contractStart > reportingStart ? contractStart : reportingStart;
   const effectiveEnd = minDate(
     asOf,
     getReportingEnd(reporting, asOf),
@@ -76,9 +70,7 @@ function getOneTimeFeesByContact(
   for (const opportunity of opportunities) {
     const wonDate = getDate(opportunity, revenueFields.wonDate);
     const contactId = getContactId(opportunity);
-    if (!wonDate || !contactId || !isInReportingYear(wonDate, reporting, asOf)) {
-      continue;
-    }
+    if (!wonDate || !contactId || !isInReportingYear(wonDate, reporting, asOf)) continue;
 
     const fee = getNumber(opportunity, revenueFields.oneTimeFee);
     fees.set(contactId, (fees.get(contactId) ?? 0) + fee);
@@ -111,26 +103,19 @@ function createClientRows(
       const mrr = getNumber(contact, revenueFields.mrr);
       const contractStart = getDate(contact, revenueFields.contractStart);
       const cancelledDate = getDate(contact, revenueFields.cancelled);
-      const oneTimeFees = contact.id
-        ? (oneTimeFeesByContact.get(contact.id) ?? 0)
-        : 0;
-      const monthsEarned = getMonthsEarned(
-        contractStart,
-        cancelledDate,
-        reporting,
-        asOf,
-      );
+      const oneTimeFees = contact.id ? (oneTimeFeesByContact.get(contact.id) ?? 0) : 0;
+      const monthsEarned = getMonthsEarned(contractStart, cancelledDate, reporting, asOf);
       const ytdMrr = mrr * monthsEarned;
       const cancelled = cancelledDate !== null && cancelledDate <= asOf;
+      const directReferrer = getText(contact, revenueFields.directReferrer, "");
+      const revenueReferrer = getText(contact, revenueFields.revenueReferrer, directReferrer);
 
       return {
         id: contact.id ?? "",
         client: getClientName(contact),
-        referralSource: getText(
-          contact,
-          revenueFields.referralSource,
-          "Unassigned",
-        ),
+        referralSource: getText(contact, revenueFields.referralSource, "Unassigned"),
+        directReferrer,
+        revenueReferrer,
         package: getText(contact, revenueFields.package, "—"),
         mrr,
         ytdMrr,
@@ -143,27 +128,47 @@ function createClientRows(
     .sort((a, b) => b.total - a.total);
 }
 
-function createSourceRows(clientRows: RevenueClient[]): RevenueSource[] {
-  const sources = new Map<string, Omit<RevenueSource, "source">>();
+function createReferrerRows(rows: RevenueClient[]): RevenueReferrer[] {
+  const referrers = new Map<string, Omit<RevenueReferrer, "referrer">>();
 
-  for (const row of clientRows) {
-    const source = sources.get(row.referralSource) ?? {
+  for (const row of rows) {
+    if (!row.revenueReferrer) continue;
+    const values = referrers.get(row.revenueReferrer) ?? {
       clients: 0,
       mrr: 0,
       ytdMrr: 0,
       oneTimeFees: 0,
       total: 0,
     };
-    source.clients += 1;
-    source.mrr += row.mrr;
-    source.ytdMrr += row.ytdMrr;
-    source.oneTimeFees += row.oneTimeFees;
-    source.total += row.total;
-    sources.set(row.referralSource, source);
+    values.clients += 1;
+    values.mrr += row.mrr;
+    values.ytdMrr += row.ytdMrr;
+    values.oneTimeFees += row.oneTimeFees;
+    values.total += row.total;
+    referrers.set(row.revenueReferrer, values);
   }
 
-  return [...sources.entries()]
-    .map(([source, values]) => ({ source, ...values }))
+  return [...referrers.entries()]
+    .map(([referrer, values]) => ({ referrer, ...values }))
+    .sort((a, b) => b.total - a.total);
+}
+
+function createSourceRows(clientRows: RevenueClient[]): RevenueSource[] {
+  const grouped = new Map<string, RevenueClient[]>();
+  for (const row of clientRows) {
+    grouped.set(row.referralSource, [...(grouped.get(row.referralSource) ?? []), row]);
+  }
+
+  return [...grouped.entries()]
+    .map(([source, rows]): RevenueSource => ({
+      source,
+      clients: rows.length,
+      mrr: rows.reduce((sum, row) => sum + row.mrr, 0),
+      ytdMrr: rows.reduce((sum, row) => sum + row.ytdMrr, 0),
+      oneTimeFees: rows.reduce((sum, row) => sum + row.oneTimeFees, 0),
+      total: rows.reduce((sum, row) => sum + row.total, 0),
+      referrers: createReferrerRows(rows),
+    }))
     .sort((a, b) => b.total - a.total);
 }
 
@@ -173,17 +178,8 @@ export function calculateRevenueDashboard(
   reporting: ReportingConfig,
   asOf = new Date(),
 ): RevenueDashboard {
-  const oneTimeFeesByContact = getOneTimeFeesByContact(
-    opportunities,
-    reporting,
-    asOf,
-  );
-  const clientRows = createClientRows(
-    contacts,
-    oneTimeFeesByContact,
-    reporting,
-    asOf,
-  );
+  const oneTimeFeesByContact = getOneTimeFeesByContact(opportunities, reporting, asOf);
+  const clientRows = createClientRows(contacts, oneTimeFeesByContact, reporting, asOf);
   const sourceRows = createSourceRows(clientRows);
 
   return {
@@ -192,10 +188,7 @@ export function calculateRevenueDashboard(
     summary: {
       currentMrr: getCurrentMrr(contacts, asOf),
       ytdMrr: clientRows.reduce((sum, row) => sum + row.ytdMrr, 0),
-      oneTimeFees: clientRows.reduce(
-        (sum, row) => sum + row.oneTimeFees,
-        0,
-      ),
+      oneTimeFees: clientRows.reduce((sum, row) => sum + row.oneTimeFees, 0),
       total: clientRows.reduce((sum, row) => sum + row.total, 0),
       cancelledClients: clientRows.filter((row) => row.cancelled).length,
     },
