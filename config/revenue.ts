@@ -23,10 +23,12 @@ export const revenueFields = {
   ),
   directReferrer: fieldReferences(
     "GHL_FIELD_DIRECT_REFERRER",
+    "W9KEXZXgnH6k5TBKq6iF",
     "contact.direct_referrer",
   ),
   revenueReferrer: fieldReferences(
     "GHL_FIELD_REVENUE_REFERRER",
+    "FocjPuLc6F7sORnmAgis",
     "contact.revenue_referrer",
   ),
   mrr: fieldReferences(
