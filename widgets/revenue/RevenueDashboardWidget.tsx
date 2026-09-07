@@ -28,44 +28,30 @@ function isRevenueDashboard(value: unknown): value is RevenueDashboard {
   );
 }
 
-export function RevenueDashboardWidget({
-  companyName,
-  currency,
-  locale,
-}: RevenueDashboardWidgetProps) {
+export function RevenueDashboardWidget({ companyName, currency, locale }: RevenueDashboardWidgetProps) {
   const [state, setState] = useState<DashboardState>({ status: "loading" });
+  const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const controller = new AbortController();
 
     async function loadDashboard() {
       try {
-        const response = await fetch("/api/revenue", {
-          cache: "no-store",
-          signal: controller.signal,
-        });
+        const response = await fetch("/api/revenue", { cache: "no-store", signal: controller.signal });
         const data: unknown = await response.json();
-
         if (!response.ok) {
-          const message =
-            data && typeof data === "object" && "error" in data
-              ? String(data.error)
-              : "Revenue data is temporarily unavailable.";
+          const message = data && typeof data === "object" && "error" in data
+            ? String(data.error)
+            : "Revenue data is temporarily unavailable.";
           throw new Error(message);
         }
-        if (!isRevenueDashboard(data)) {
-          throw new Error("Revenue data returned an unexpected response.");
-        }
-
+        if (!isRevenueDashboard(data)) throw new Error("Revenue data returned an unexpected response.");
         setState({ status: "ready", dashboard: data });
       } catch (error) {
         if (controller.signal.aborted) return;
         setState({
           status: "error",
-          message:
-            error instanceof Error
-              ? error.message
-              : "Revenue data is temporarily unavailable.",
+          message: error instanceof Error ? error.message : "Revenue data is temporarily unavailable.",
         });
       }
     }
@@ -74,25 +60,14 @@ export function RevenueDashboardWidget({
     return () => controller.abort();
   }, []);
 
-  const money = (value: number) =>
-    formatCurrency(value, { currency, locale });
+  const money = (value: number) => formatCurrency(value, { currency, locale });
 
   if (state.status === "loading") {
-    return (
-      <section className="dashboardState" aria-live="polite">
-        <span className="loadingDot" aria-hidden="true" />
-        Loading revenue dashboard…
-      </section>
-    );
+    return <section className="dashboardState" aria-live="polite"><span className="loadingDot" aria-hidden="true" />Loading revenue dashboard…</section>;
   }
 
   if (state.status === "error") {
-    return (
-      <section className="dashboardState dashboardError" role="alert">
-        <strong>Revenue dashboard unavailable</strong>
-        <span>{state.message}</span>
-      </section>
-    );
+    return <section className="dashboardState dashboardError" role="alert"><strong>Revenue dashboard unavailable</strong><span>{state.message}</span></section>;
   }
 
   const { dashboard } = state;
@@ -107,58 +82,56 @@ export function RevenueDashboardWidget({
     <main className="dashboardShell">
       <header className="dashboardHeader">
         <div>
-          <div className="eyebrow">
-            {companyName} custom revenue dashboard
-          </div>
-          <p>
-            Reporting year {dashboard.year} · Updated{" "}
-            {new Intl.DateTimeFormat(locale, {
-              dateStyle: "medium",
-              timeStyle: "short",
-            }).format(new Date(dashboard.generatedAt))}
-          </p>
+          <div className="eyebrow">{companyName} custom revenue dashboard</div>
+          <p>Reporting year {dashboard.year} · Updated {new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(dashboard.generatedAt))}</p>
         </div>
-        <div className="status">
-          <span className="statusDot" aria-hidden="true" />
-          Live data
-        </div>
+        <div className="status"><span className="statusDot" aria-hidden="true" />Live data</div>
       </header>
 
       <section className="summaryGrid" aria-label="Revenue summary">
-        {summaryCards.map(([label, value]) => (
-          <article className="metricCard" key={label}>
-            <span>{label}</span>
-            <strong>{value}</strong>
-          </article>
-        ))}
+        {summaryCards.map(([label, value]) => <article className="metricCard" key={label}><span>{label}</span><strong>{value}</strong></article>)}
       </section>
 
       <section className="dashboardGrid">
         <article className="dataCard">
           <div className="cardHeading">
-            <div>
-              <span className="sectionLabel">Acquisition</span>
-              <h2>Revenue by referral source</h2>
-            </div>
+            <div><span className="sectionLabel">Acquisition</span><h2>Revenue by referral source</h2></div>
             <span>{dashboard.sourceRows.length} sources</span>
           </div>
           <div className="tableWrap">
             <table>
-              <thead>
-                <tr>
-                  <th>Source</th>
-                  <th>Total clients</th>
-                  <th>Total revenue</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Source</th><th>Total clients</th><th>Total revenue</th></tr></thead>
               <tbody>
-                {dashboard.sourceRows.map((row) => (
-                  <tr key={row.source}>
-                    <td>{row.source}</td>
-                    <td>{row.clients}</td>
-                    <td className="totalCell">{money(row.total)}</td>
-                  </tr>
-                ))}
+                {dashboard.sourceRows.map((row) => {
+                  const expandable = row.referrers.length > 0;
+                  const expanded = Boolean(expandedSources[row.source]);
+                  return [
+                    <tr key={row.source} className={expandable ? "sourceRow expandableRow" : "sourceRow"}>
+                      <td>
+                        {expandable ? (
+                          <button
+                            className="sourceToggle"
+                            type="button"
+                            aria-expanded={expanded}
+                            onClick={() => setExpandedSources((current) => ({ ...current, [row.source]: !current[row.source] }))}
+                          >
+                            <span className="accordionChevron" aria-hidden="true">{expanded ? "−" : "+"}</span>
+                            {row.source}
+                          </button>
+                        ) : row.source}
+                      </td>
+                      <td>{row.clients}</td>
+                      <td className="totalCell">{money(row.total)}</td>
+                    </tr>,
+                    ...(expanded ? row.referrers.map((referrer) => (
+                      <tr className="referrerRow" key={`${row.source}:${referrer.referrer}`}>
+                        <td><span className="referrerName">{referrer.referrer}</span></td>
+                        <td>{referrer.clients}</td>
+                        <td className="referrerTotal">{money(referrer.total)}</td>
+                      </tr>
+                    )) : []),
+                  ];
+                })}
               </tbody>
             </table>
           </div>
@@ -166,30 +139,16 @@ export function RevenueDashboardWidget({
 
         <article className="dataCard clientsCard">
           <div className="cardHeading">
-            <div>
-              <span className="sectionLabel">Accounts</span>
-              <h2>Client revenue</h2>
-            </div>
+            <div><span className="sectionLabel">Accounts</span><h2>Client revenue</h2></div>
             <span>{dashboard.clientRows.length} clients</span>
           </div>
           <div className="tableWrap">
             <table>
-              <thead>
-                <tr>
-                  <th>Client</th>
-                  <th>Source</th>
-                  <th>One-time fee</th>
-                  <th>MRR</th>
-                  <th>YTD total</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Client</th><th>Source</th><th>One-time fee</th><th>MRR</th><th>YTD total</th></tr></thead>
               <tbody>
                 {dashboard.clientRows.map((row) => (
                   <tr key={row.id || row.client}>
-                    <td>
-                      <span className="clientName">{row.client}</span>
-                      <span className="clientPackage">{row.package}</span>
-                    </td>
+                    <td><span className="clientName">{row.client}</span><span className="clientPackage">{row.package}</span></td>
                     <td>{row.referralSource}</td>
                     <td>{money(row.oneTimeFees)}</td>
                     <td>{money(row.mrr)}</td>
